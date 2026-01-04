@@ -1,3 +1,9 @@
+# arguments (all words after the target)
+ARGS ?= $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+# avoid args being treated as unknown make targets
+$(foreach arg,$(ARGS),$(eval $(arg):;@:))
+
+
 # docker cli
 DC ?= docker compose
 
@@ -25,9 +31,6 @@ ATLAS_ENV_MIGRATE = migrate
 ATLAS_SCHEMA_SQL = schema/schema.sql
 ATLAS_SCHEMA_TMP = $(ATLAS_SCHEMA_SQL).tmp
 
-# arguments
-ARG1 := $(word 2,$(MAKECMDGOALS))
-
 # format schema.sql from inspec itself (to normalize formatting)
 .PHONY:	schema.format
 schema.format:
@@ -53,11 +56,11 @@ schema.clean:
 # gen diff diff from migrations to schema
 .PHONY:	migrate.diff
 migrate.diff:
-	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) diff $(ARG1)
+	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) diff $(ARGS)
 
 .PHONY: migrate.new
 migrate.new:
-	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) new $(ARG1)
+	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) new $(ARGS)
 
 .PHONY: migrate.lint
 migrate.lint:
@@ -78,8 +81,3 @@ migrate.apply:
 .PHONY: migrate.status
 migrate.status:
 	$(ATLAS) migrate --env $(ATLAS_ENV) status
-
-
-%:
-	@echo "unknown target: $@"
-	@exit 1
