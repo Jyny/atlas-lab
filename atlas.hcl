@@ -26,10 +26,24 @@ variable "local_db" {
   default = "postgres://user:passwd@localhost:5432/default?search_path=public&sslmode=disable"
 }
 
+# for make schema.format
 env "schema" {
   dev = var.dev_db
 
   url = var.schema_file
+
+  format {
+    schema {
+      inspect = var.sql_fmt_2spc
+    }
+  }
+}
+
+# for make schema.update
+env "migrate" {
+  dev = var.dev_db
+
+  url = var.migration_dir
 
   format {
     schema {

@@ -17,21 +17,27 @@ infra.restart: infra.down infra.up
 # atlas cli
 ATLAS ?= atlas
 
-# atlas envs (must match atlas.hcl)
+# atlas variables (must match atlas.hcl)
 ATLAS_ENV  ?= local
 ATLAS_ENV_LOCAL  ?= local
 ATLAS_ENV_SCHEMA = schema
-ATLAS_SCHEMA_DIR = schema
-ATLAS_SCHEMA_SQL ?= $(ATLAS_SCHEMA_DIR)/schema.sql
-ATLAS_SCHEMA_TMP ?= $(ATLAS_SCHEMA_DIR)/schema.sql.tmp
+ATLAS_ENV_MIGRATE = migrate
+ATLAS_SCHEMA_SQL = schema/schema.sql
+ATLAS_SCHEMA_TMP = $(ATLAS_SCHEMA_SQL).tmp
 
 # arguments
 ARG1 := $(word 2,$(MAKECMDGOALS))
 
-# inspect schema.sql to self (acts like formatting / normalization)
+# format schema.sql from inspec itself (to normalize formatting)
 .PHONY:	schema.format
 schema.format:
 	$(ATLAS) schema --env $(ATLAS_ENV_SCHEMA) inspect > $(ATLAS_SCHEMA_TMP) \
+	&& mv $(ATLAS_SCHEMA_TMP) $(ATLAS_SCHEMA_SQL) || rm -f $(ATLAS_SCHEMA_TMP)
+
+# update schema.sql from migrations (replay migrations to get desired schema)
+.PHONY: schema.update
+schema.update:
+	$(ATLAS) schema --env $(ATLAS_ENV_MIGRATE) inspect > $(ATLAS_SCHEMA_TMP) \
 	&& mv $(ATLAS_SCHEMA_TMP) $(ATLAS_SCHEMA_SQL) || rm -f $(ATLAS_SCHEMA_TMP)
 
 # apply declarative schema.sql to local database ONLY
