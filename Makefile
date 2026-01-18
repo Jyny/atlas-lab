@@ -58,26 +58,32 @@ schema.clean:
 migrate.diff:
 	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) diff $(ARGS)
 
+# create new migration file
 .PHONY: migrate.new
 migrate.new:
 	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) new $(ARGS)
 
+# lint migration files
 .PHONY: migrate.lint
 migrate.lint:
 	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) lint --git-base main
 
+# validate migration files
 .PHONY: migrate.validate
 migrate.validate:
 	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) validate
 
+# hash migration files
 .PHONY: migrate.hash
 migrate.hash:
 	$(ATLAS) migrate --env $(ATLAS_ENV_LOCAL) hash
 
+# apply migrations to target database (default: local)
 .PHONY: migrate.apply
 migrate.apply:
 	$(ATLAS) migrate --env $(ATLAS_ENV) apply
 
+# show migration status for target database (default: local)
 .PHONY: migrate.status
 migrate.status:
 	$(ATLAS) migrate --env $(ATLAS_ENV) status

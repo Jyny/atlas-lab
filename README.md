@@ -20,6 +20,9 @@ make schema.apply
 
 # Stop local database
 make infra.down
+
+# Restart local database
+make infra.restart
 ```
 
 ## Workflow: Hybrid Schema Migration
@@ -33,6 +36,9 @@ Edit `schema/schema.sql` directly, then:
 ```bash
 # Format/normalize schema file
 make schema.format
+
+# Update schema.sql from migrations (replay migrations)
+make schema.update
 
 # Apply schema to local database
 make schema.apply
