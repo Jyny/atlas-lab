@@ -1,3 +1,5 @@
+# https://github.com/Jyny/atlas-lab/releases/tag/0.1.0
+
 # arguments (all words after the target)
 ARGS ?= $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 # avoid args being treated as unknown make targets

@@ -1,3 +1,5 @@
+# https://github.com/Jyny/atlas-lab/releases/tag/0.1.0
+
 variable "dev_db" {
   # https://atlasgo.io/concepts/dev-database
   type    = string
