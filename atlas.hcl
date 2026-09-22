@@ -1,4 +1,4 @@
-# https://github.com/Jyny/atlas-lab/releases/tag/0.1.0
+# https://github.com/Jyny/atlas-lab/releases/tag/0.2.0
 # https://atlasgo.io/atlas-schema/projects
 
 variable "dev_url" {
