@@ -9,3 +9,10 @@ services:
       POSTGRES_DB: default
     ports:
       - "5432:5432"
+    volumes:
+      # postgres:18 puts PGDATA under /var/lib/postgresql/18/docker and declares
+      # /var/lib/postgresql as the volume, so mount the parent, not PGDATA
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:
