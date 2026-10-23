@@ -1,4 +1,4 @@
-# https://github.com/Jyny/atlas-lab/releases/tag/0.2.0
+# https://github.com/Jyny/atlas-lab/releases/tag/0.3.0
 # https://atlasgo.io/atlas-schema/projects
 
 # settings come from the environment (.env via the Makefile, see .env.example)
