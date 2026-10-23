@@ -2,11 +2,20 @@
 
 # local, git-ignored settings (`make env.init` creates it from .env.example).
 # exported so docker compose and atlas.hcl read the same values as make.
+ENV_KEYS = DB_ENGINE DB_USER DB_PASSWORD DB_NAME STAGING_URL
+
+# precedence: command line > environment > .env > defaults, same as docker
+# compose. assignments in an included file beat the environment in make, so
+# `STAGING_URL=... make ...` would otherwise be clobbered by `STAGING_URL=` in
+# .env: save the environment's values and restore them after the include.
+ENV_FROM_ENV := $(foreach k,$(ENV_KEYS),$(if $(filter environment,$(origin $(k))),$(k)))
+$(foreach k,$(ENV_FROM_ENV),$(eval ENV_SAVED.$(k) := $$(value $(k))))
 -include .env
+$(foreach k,$(ENV_FROM_ENV),$(eval $(k) := $$(ENV_SAVED.$(k))))
 
 # database engine: postgres | mysql
 DB_ENGINE ?= postgres
-export DB_ENGINE DB_USER DB_PASSWORD DB_NAME STAGING_URL
+export $(ENV_KEYS)
 ifeq ($(filter $(DB_ENGINE),postgres mysql),)
 $(error DB_ENGINE must be postgres or mysql, got "$(DB_ENGINE)")
 endif
@@ -82,8 +91,12 @@ infra.down:
 	$(DC_ENGINE) down
 
 # stop and start the database (data survives)
+# sequential sub-makes, not prerequisites: under `make -j` prerequisites run in
+# parallel and `up` races `down`, leaving the database stopped
 .PHONY: infra.restart
-infra.restart: infra.down infra.up
+infra.restart:
+	@$(MAKE) --no-print-directory infra.down
+	@$(MAKE) --no-print-directory infra.up
 
 # stop the database AND delete its volume (data is lost)
 .PHONY: infra.reset
@@ -127,6 +140,13 @@ endef
 # require a name argument, e.g. `make migrate.new add_users`
 define require.args
 @test -n "$(strip $(ARGS))" || { echo "usage: make $@ <migration_name>"; exit 1; }
+endef
+
+# fail early when the staging env has no url. atlas would otherwise report
+# `missing driver` or `required flag "url" not set` depending on the command
+define require.url
+@test "$(ATLAS_ENV)" != staging || test -n "$(STAGING_URL)" \
+|| { echo "STAGING_URL is not set: add it to .env or pass STAGING_URL=..."; exit 1; }
 endef
 
 # format atlas.hcl itself
@@ -200,16 +220,19 @@ migrate.hash:
 # preview pending migrations without applying them (default: local)
 .PHONY: migrate.plan
 migrate.plan:
+	$(require.url)
 	$(ATLAS) migrate apply --env $(ATLAS_ENV) --dry-run
 
 # apply migrations to target database (default: local)
 .PHONY: migrate.apply
 migrate.apply:
+	$(require.url)
 	$(ATLAS) migrate apply --env $(ATLAS_ENV)
 
 # show migration status for target database (default: local)
 .PHONY: migrate.status
 migrate.status:
+	$(require.url)
 	$(ATLAS) migrate status --env $(ATLAS_ENV)
 
 # baseline a database built by `schema.apply`, then apply the rest (default: local)
@@ -221,8 +244,10 @@ migrate.status:
 # a database that already has revisions ignores --baseline.
 .PHONY: migrate.baseline
 migrate.baseline:
+	$(require.url)
 	@v="$(strip $(ARGS))"; \
-	test -n "$$v" || v=$$(ls $(ATLAS_MIGRATION_DIR)/*.sql | sort | tail -1 \
-		| xargs basename | sed 's/_.*//; s/\.sql$$//'); \
+	test -n "$$v" || v=$$(ls $(ATLAS_MIGRATION_DIR)/*.sql 2>/dev/null | sort | tail -1 \
+		| sed 's|.*/||; s/_.*//; s/\.sql$$//'); \
+	test -n "$$v" || { echo "no migration files in $(ATLAS_MIGRATION_DIR)/ to baseline at"; exit 1; }; \
 	echo "$(ATLAS) migrate apply --env $(ATLAS_ENV) --baseline $$v"; \
 	$(ATLAS) migrate apply --env $(ATLAS_ENV) --baseline "$$v"

@@ -46,7 +46,9 @@ make env.init   # copies .env.example to .env, never overwrites
 The Makefile reads `.env` and exports these to docker compose and atlas, so
 the three always agree. Without a `.env` every tool falls back to the defaults
 above, and `atlas ... --env local` also works when run directly. Any of them can
-be overridden per command, e.g. `make infra.up DB_ENGINE=mysql`.
+be overridden per command, e.g. `make infra.up DB_ENGINE=mysql`, or from the
+environment, e.g. `DB_ENGINE=mysql make infra.up`. Precedence is command line >
+environment > `.env` > defaults, the same as docker compose.
 
 Keep `.env` to plain `KEY=value` lines: make takes quotes and inline comments
 literally.
@@ -197,8 +199,10 @@ STAGING_URL='postgres://...' make migrate.status ATLAS_ENV=staging
 The staging database must use the same engine as `DB_ENGINE`, since that is
 the dialect the migrations are written and checked in.
 
-Leaving `STAGING_URL` unset makes the env resolve to an empty URL, which atlas
-reports as `Error: sql/sqlclient: missing driver`.
+Leaving `STAGING_URL` unset makes these targets stop before calling atlas with
+`STAGING_URL is not set: add it to .env or pass STAGING_URL=...`. Run directly,
+`atlas ... --env staging` resolves to an empty URL instead, which atlas reports
+as `missing driver` or `required flag "url" not set` depending on the command.
 
 The `schema.*` targets and `migrate.diff` / `new` / `lint` / `validate` /
 `hash` are pinned to `local` on purpose and ignore `ATLAS_ENV` — they author
