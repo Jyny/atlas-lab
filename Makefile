@@ -212,14 +212,17 @@ migrate.apply:
 migrate.status:
 	$(ATLAS) migrate status --env $(ATLAS_ENV)
 
-# mark migrations as already applied WITHOUT running them (default: local)
-# needed when switching a database built by `schema.apply` over to versioned
-# mode: `migrate apply` refuses a non-empty database that has no revisions.
-# pass a version to baseline at, or omit to baseline at the latest file.
+# baseline a database built by `schema.apply`, then apply the rest (default: local)
+# `migrate apply` refuses a non-empty database that has no revisions. this
+# records the given version (and everything before it) as applied WITHOUT
+# running it, then runs every file after it. pass a version to baseline at, or
+# omit to baseline at the latest file. there is no safe preview: in atlas
+# community v1.3.0 `--baseline --dry-run` still writes the baseline revision.
+# a database that already has revisions ignores --baseline.
 .PHONY: migrate.baseline
 migrate.baseline:
 	@v="$(strip $(ARGS))"; \
 	test -n "$$v" || v=$$(ls $(ATLAS_MIGRATION_DIR)/*.sql | sort | tail -1 \
 		| xargs basename | sed 's/_.*//; s/\.sql$$//'); \
-	echo "$(ATLAS) migrate set --env $(ATLAS_ENV) $$v"; \
-	$(ATLAS) migrate set --env $(ATLAS_ENV) "$$v"
+	echo "$(ATLAS) migrate apply --env $(ATLAS_ENV) --baseline $$v"; \
+	$(ATLAS) migrate apply --env $(ATLAS_ENV) --baseline "$$v"

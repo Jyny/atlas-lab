@@ -214,16 +214,28 @@ Error: sql/migrate: connected database is not clean: found table "users"
 in schema "public". baseline version or allow-dirty is required
 ```
 
-Record the existing migrations as applied without running them, then continue
-normally:
+`make migrate.baseline` runs `migrate apply --baseline <version>`: it records
+that version and every earlier one as applied *without running them*, then
+applies the files after it like a normal `migrate.apply`:
 
 ```bash
-# baseline at the latest migration file
+# baseline at the latest migration file (nothing is left to run)
 make migrate.baseline
 
-# or baseline at a specific version
+# or baseline at a specific version, then run the files after it
 make migrate.baseline 20260101120000
 ```
+
+Pick the version the database actually matches: the baselined files are never
+executed, even on an empty database, and a mistyped version fails with
+`baseline version "..." not found`. A database that already has revisions
+ignores the baseline and just applies what is pending.
+
+There is no side-effect-free preview. In atlas community v1.3.0,
+`migrate apply --baseline <version> --dry-run` still writes the baseline row,
+so `make migrate.plan` is not a dry run of this target. Check which files come
+after the version with `ls migration/` before running it, especially with
+`ATLAS_ENV=staging`.
 
 ### Formatting the config
 

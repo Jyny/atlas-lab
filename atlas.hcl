@@ -105,7 +105,10 @@ env "local" {
   dev = local.dev_url
 
   # desired state: --to for `schema apply` / `migrate diff`, --from for `schema diff`
-  src = var.schema_src
+  # https://atlasgo.io/atlas-schema/projects#schema
+  schema {
+    src = var.schema_src
+  }
 
   # target database: --url for `schema apply` / `migrate apply`
   url = local.local_url
@@ -136,7 +139,7 @@ env "local" {
 # deployment target for the versioned commands, e.g.
 # `make migrate.status ATLAS_ENV=staging` with STAGING_URL set in .env.
 # its engine must match db_engine, since migrations are written in that dialect.
-# no `src`: applying a declarative desired state straight to a deployed
+# no `schema` block: applying a declarative desired state straight to a deployed
 # database is exactly what versioned mode exists to avoid.
 env "staging" {
   dev = local.dev_url
