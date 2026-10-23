@@ -1,4 +1,4 @@
-# https://github.com/Jyny/atlas-lab/releases/tag/0.3.0
+# https://github.com/Jyny/atlas-lab/releases/tag/0.4.0
 
 # local, git-ignored settings (`make env.init` creates it from .env.example).
 # exported so docker compose and atlas.hcl read the same values as make.
