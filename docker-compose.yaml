@@ -1,12 +1,15 @@
+# one service per DB_ENGINE, selected with `--profile` (see infra.* targets)
+# values come from .env, falling back to the same defaults as atlas.hcl
 services:
-  db:
+  postgres:
+    profiles: [postgres]
     image: postgres:18
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: passwd
-      POSTGRES_DB: default
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-passwd}
+      POSTGRES_DB: ${DB_NAME:-default}
     ports:
       - "5432:5432"
     volumes:
@@ -14,5 +17,21 @@ services:
       # /var/lib/postgresql as the volume, so mount the parent, not PGDATA
       - pgdata:/var/lib/postgresql
 
+  mysql:
+    profiles: [mysql]
+    image: mysql:8
+    container_name: mysql
+    restart: always
+    environment:
+      # atlas connects as root: the revisions live in a separate "atlas"
+      # database, which MYSQL_USER would have no rights to create
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-passwd}
+      MYSQL_DATABASE: ${DB_NAME:-default}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+
 volumes:
   pgdata:
+  mysqldata:

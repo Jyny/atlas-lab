@@ -1,5 +1,16 @@
 # https://github.com/Jyny/atlas-lab/releases/tag/0.1.0
 
+# local, git-ignored settings (`make env.init` creates it from .env.example).
+# exported so docker compose and atlas.hcl read the same values as make.
+-include .env
+
+# database engine: postgres | mysql
+DB_ENGINE ?= postgres
+export DB_ENGINE DB_USER DB_PASSWORD DB_NAME STAGING_URL
+ifeq ($(filter $(DB_ENGINE),postgres mysql),)
+$(error DB_ENGINE must be postgres or mysql, got "$(DB_ENGINE)")
+endif
+
 # a bare `make` would otherwise run the first target (infra.up) and silently
 # start docker
 .DEFAULT_GOAL := help
@@ -37,6 +48,7 @@ help:
 	@echo
 	@echo "variables (shown with their current value):"
 	@printf "  %-30s %s\n" \
+		"DB_ENGINE=$(DB_ENGINE)" "database engine: postgres | mysql" \
 		"ATLAS_ENV=$(ATLAS_ENV)" "env for migrate.plan/apply/status/baseline" \
 		"ATLAS_APPROVE=$(ATLAS_APPROVE)" "set empty to restore the confirmation prompt" \
 		"ATLAS_LINT_LATEST=$(ATLAS_LINT_LATEST)" "number of recent migrations to lint" \
@@ -47,18 +59,27 @@ help:
 
 # docker cli
 DC ?= docker-compose
+# each engine is a compose profile, so only the selected database starts
+DC_ENGINE = $(DC) --profile $(DB_ENGINE)
+
+# env
+
+# create .env from .env.example (never overwrites an existing .env)
+.PHONY: env.init
+env.init:
+	@test -e .env && echo ".env already exists" || { cp .env.example .env && echo "created .env"; }
 
 # infra
 
-# start the database in the background
+# start the DB_ENGINE database in the background
 .PHONY: infra.up
 infra.up:
-	$(DC) up -d
+	$(DC_ENGINE) up -d
 
 # stop the database, keeping its volume (data survives)
 .PHONY: infra.down
 infra.down:
-	$(DC) down
+	$(DC_ENGINE) down
 
 # stop and start the database (data survives)
 .PHONY: infra.restart
@@ -67,7 +88,7 @@ infra.restart: infra.down infra.up
 # stop the database AND delete its volume (data is lost)
 .PHONY: infra.reset
 infra.reset:
-	$(DC) down -v
+	$(DC_ENGINE) down -v
 
 
 # atlas cli
@@ -140,7 +161,7 @@ schema.apply:
 	$(ATLAS) schema apply --env $(ATLAS_ENV_LOCAL) $(ATLAS_APPROVE)
 
 # clean all objects in local database ONLY
-# only drops the schema in the url's search_path ("public"), so the revisions
+# only drops the schema the url points at ("public" / DB_NAME), so the revisions
 # in the "atlas" schema survive and `migrate.status` still counts those files
 # as executed against what is now an empty database. use infra.reset for a
 # true zero state.

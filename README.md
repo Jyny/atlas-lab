@@ -26,6 +26,50 @@ Install the following CLI tools:
 > it is `schema apply --dry-run`, same as `make migrate.plan` is
 > `migrate apply --dry-run`.
 
+## Configuration
+
+Local settings live in `.env`, which is git-ignored. Create it from the tracked
+[`.env.example`](./.env.example):
+
+```bash
+make env.init   # copies .env.example to .env, never overwrites
+```
+
+| Variable      | Default    | Used for                                          |
+| ------------- | ---------- | ------------------------------------------------- |
+| `DB_ENGINE`   | `postgres` | `postgres` or `mysql`: which database to run/target |
+| `DB_USER`     | `user`     | local postgres user (mysql always uses `root`)    |
+| `DB_PASSWORD` | `passwd`   | local database password                           |
+| `DB_NAME`     | `default`  | local database name                               |
+| `STAGING_URL` | *(empty)*  | target of the `staging` env                       |
+
+The Makefile reads `.env` and exports these to docker compose and atlas, so
+the three always agree. Without a `.env` every tool falls back to the defaults
+above, and `atlas ... --env local` also works when run directly. Any of them can
+be overridden per command, e.g. `make infra.up DB_ENGINE=mysql`.
+
+Keep `.env` to plain `KEY=value` lines: make takes quotes and inline comments
+literally.
+
+The credentials only seed a *new* volume; after changing them run
+`make infra.reset`.
+
+### MySQL (optional)
+
+PostgreSQL 18 is the default. Set `DB_ENGINE=mysql` to use MySQL 8 instead,
+for both the local container and atlas' dev database:
+
+```bash
+echo DB_ENGINE=mysql >> .env   # or pass DB_ENGINE=mysql to each make call
+make infra.up
+make schema.apply
+```
+
+Each engine is a compose profile with its own volume, so only the selected one
+starts and their data is kept apart. `schema/schema.sql` and `migration/` are
+written in one SQL dialect, though: switching engines means starting them over
+for the other dialect. `infra.reset` may remove both engines' volumes.
+
 ## Quick Start
 
 ```bash
@@ -88,8 +132,8 @@ pipelines and scripts. Set `ATLAS_APPROVE=` to get the confirmation prompt back:
 make schema.clean ATLAS_APPROVE=
 ```
 
-`schema.clean` only drops the schema in the connection's `search_path`
-(`public`). The revision history in the `atlas` schema survives, so afterwards
+`schema.clean` only drops the schema the connection points at (`public` on
+postgres, `DB_NAME` on mysql). The revision history in the `atlas` schema survives, so afterwards
 `migrate.status` still reports every applied version as executed against what
 is now an empty database — and `migrate.apply` will skip the migrations that
 would recreate it. Use `make infra.reset` when you want a true zero state.
@@ -140,12 +184,18 @@ before committing.
 `migrate.plan`, `migrate.apply`, `migrate.status` and `migrate.baseline` target
 the `local` env by default. Point them at another env from `atlas.hcl` with
 `ATLAS_ENV`. Besides `local`, this lab defines `staging`, whose URL comes from
-the `STAGING_URL` environment variable so no credentials are committed:
+`STAGING_URL` (in `.env` or the environment) so no credentials are committed:
 
 ```bash
-STAGING_URL='postgres://user:passwd@staging-host:5432/app?sslmode=require' \
-  make migrate.status ATLAS_ENV=staging
+# with STAGING_URL=postgres://user:passwd@staging-host:5432/app?sslmode=require in .env
+make migrate.status ATLAS_ENV=staging
+
+# or one-off
+STAGING_URL='postgres://...' make migrate.status ATLAS_ENV=staging
 ```
+
+The staging database must use the same engine as `DB_ENGINE`, since that is
+the dialect the migrations are written and checked in.
 
 Leaving `STAGING_URL` unset makes the env resolve to an empty URL, which atlas
 reports as `Error: sql/sqlclient: missing driver`.
